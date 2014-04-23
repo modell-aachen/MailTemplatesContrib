@@ -1,0 +1,6 @@
+!noci
+data/System/MailTemplatesContrib.txt 0644 Documentation page
+lib/Foswiki/Contrib/MailTemplatesContrib.pm  Perl module 
+lib/Foswiki/Contrib/MailTemplatesContrib/Config.spec 0444 Configuration
+templates/mailtemplatescontrib.tmpl 0644 base template for mail
+tools/mailtemplate_send 0644
