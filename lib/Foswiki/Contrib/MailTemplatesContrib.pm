@@ -162,13 +162,13 @@ sub sendMail {
     $receipients->{Cc} = usersToMails( $receipients->{WikiCc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
     $receipients->{Bcc} = usersToMails( $receipients->{WikiBcc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
 
-    return 0 unless $receipients->{To} && scalar keys $receipients->{To};
+    return 0 unless $receipients->{To} && scalar keys %{$receipients->{To}};
 
     # Join to single 'To' field, if requested (otherwise send separate mail to each 'To' mail)
     if( $options->{SingleMail} ) {
         my $mail = '';
         my $wiki = '';
-        foreach my $to ( keys $receipients->{To} ) {
+        foreach my $to ( keys %{$receipients->{To}} ) {
             $mail .= ',' if $mail;
             $mail .= $to;
             $wiki .= ', ' if $wiki;
@@ -179,7 +179,7 @@ sub sendMail {
 
     # send mails
     my $count = 1;
-    foreach my $to ( keys $receipients->{To} ) {
+    foreach my $to ( keys %{$receipients->{To}} ) {
         Foswiki::Func::setPreferencesValue( 'to_expanded', 'To: '.$to );
         Foswiki::Func::setPreferencesValue( 'to_WikiName', $receipients->{To}->{$to} );
         Foswiki::Func::setPreferencesValue( 'ModacMailCount', $count++ );
