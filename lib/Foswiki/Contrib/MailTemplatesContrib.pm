@@ -151,7 +151,7 @@ sub sendMail {
     my $includeUsers = $options->{IncludeUsers};
     my $includeMails = $options->{IncludeMailUsers};
 
-    # Do the generell primer
+    # Do the general primer
     Foswiki::Func::expandCommonVariables(Foswiki::Func::expandTemplate( 'ModacMailPrimer' ));
 
     # get people
