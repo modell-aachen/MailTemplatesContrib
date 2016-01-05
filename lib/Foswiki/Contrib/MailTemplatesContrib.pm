@@ -101,7 +101,7 @@ sub usersToMails {
         next if defined $skipUsers->{$who};
         next if defined $includeUsers && not defined $includeUsers->{$who};
         my @list = Foswiki::Func::wikinameToEmails($who);
-        $skipUsers->{$who} = 1 if scalar @list;
+        $skipUsers->{Foswiki::Func::getCanonicalUserID($who)} = 1 if scalar @list;
         foreach my $mail ( @list ) {
             next if $skipMails->{$mail};
             next if $includeMails && not $includeMails->{$mail};
@@ -151,7 +151,7 @@ sub sendMail {
     my $includeUsers = $options->{IncludeUsers};
     my $includeMails = $options->{IncludeMailUsers};
 
-    # Do the generell primer
+    # Do the general primer
     Foswiki::Func::expandCommonVariables(Foswiki::Func::expandTemplate( 'ModacMailPrimer' ));
 
     # get people
