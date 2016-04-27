@@ -294,49 +294,56 @@ sub _sendCli {
 sub _encodeSubject {
     my ( $header, $subject ) = @_;
 
-    # do not encode all-ascii subject
+    # Do not encode all-ascii subject
     return $header.$subject if $subject =~ m/^\p{ASCII}*$/;
 
-    my $l_header = length($header);
-
-    # header and footer for encoded words
-    my $pre = '=?utf-8?B?';
-    my $l_pre = length($pre);
+    # Header and footer for encoded words
+    my $pre = '=?utf-8?Q?';
     my $tail = '?=';
-    my $l_tail = length($tail);
 
-    if($Foswiki::UNICODE) {
-        $subject = Foswiki::encode_utf8($subject);
+    # Encode characters.
+    # Encoded stuff is placed in @escapes and a placeholder inserted;
+    # this is to prevent splitting multi-byte chars.
+    # A placeholder looks like this: \x01...\x01\x02
+    my $encoded = $subject;
+    my @escapes = ();
+    my $escapeChar = sub {
+        my $x = $1;
+        if($Foswiki::UNICODE) {
+            $x = Foswiki::encode_utf8($x);
+        }
+        my @chars = map{'='.unpack('H*',$_)} split('', $x);
+        my $quoted = join('', @chars);
+        push(@escapes, $quoted);
+        return "\x01" x (length($quoted) - 1) . "\x02"
+    };
+    # Encode disallowed chars. Note: Also spaces must be encoded.
+    $encoded =~ s#([^\x09\x21-\x3c\x3e-\x7e])#&$escapeChar#ge;
+
+    # Put the complete subject line together
+    $encoded = $header.$pre.$encoded.$tail;
+
+    # A line containing an encoded word must not exceed 76 chars.
+    if ( length($encoded) > 76 ) {
+        # Split into multiple encoded words.
+        # Note: white spaces betweed these will be ignored
+        my @chunks = ();
+
+        # Ignoring that the first line may actually be longer (no leading
+        # space).
+        # The last char must not be in the middle of a multi-byte char
+        # (escaped as \x01).
+        my $maxLength = 74 - length($pre) - length($tail);
+        while($encoded =~ m#\G(.{0,$maxLength}[^\x01])#g) {
+            push(@chunks, $1);
+        }
+        $encoded = join("$tail\n $pre", @chunks);
     }
 
-    my $encoded = MIME::Base64::encode($subject, '');
-    my $l_encoded = length $encoded;
+    # re-insert encoded chars
+    $encoded =~ s#\x01+\x02#shift @escapes#ge;
 
-    # a line containing an encoded word must not exceed 76 chars
-    if ( $l_header + $l_encoded + $l_pre + $l_tail <= 76 ) {
-        # ok, everything fits in one line
-        return $header.$pre.$encoded.$tail;
-    }
-
-    # Split into multiple encoded words.
-    # Note: white spaces betweed theses will be ignored
-    my @chunks = ();
-
-    # first line
-    my $offset = 76 - $l_header - 1 - length($pre) - length($tail);
-    $offset = $offset - ($offset % 4); # split on valid position
-    push(@chunks, $header.$pre.unpack("a$offset", $encoded));
-
-    # middle lines
-    # encoded words must not exceed 75 chars
-    my $l_chunk = 75 - length($pre) - length($tail);
-    $l_chunk = $l_chunk - ($l_chunk % 4);
-    push(@chunks, unpack("x$offset (a$l_chunk)*", $encoded));
-
-    # append tail to last line
-    push(@chunks, pop(@chunks).$tail);
-
-    return join("$tail\n $pre", @chunks);
+    return $encoded;
 }
 
 
