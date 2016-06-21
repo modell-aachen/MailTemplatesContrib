@@ -3,6 +3,4 @@ data/System/MailTemplatesContrib.txt 0644 Documentation page
 lib/Foswiki/Contrib/MailTemplatesContrib.pm  Perl module 
 lib/Foswiki/Contrib/MailTemplatesContrib/Config.spec 0444 Configuration
 templates/mailtemplatescontrib.tmpl 0644 base template for mail
-templates/mailnotify.modac.tmpl 0644 Template that overrides MailerContrib mail notify
-templates/newsletter.modac.tmpl 0644 Template that overrides MailerContrib newsletter
 tools/mailtemplate_send 0644

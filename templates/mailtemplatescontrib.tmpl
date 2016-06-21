@@ -19,9 +19,6 @@ Content-Transfer-Encoding: 8bit
 --%TMPL:P{"ModacMailBoundary"}%--
 %TMPL:END%
 
-%{"Default from field. Uses settings in site preferences if they exist."}%
-%TMPL:DEF{"ModacMailFrom"}%%IF{"defined AUTOGENMAILNAME" then="%AUTOGENMAILNAME%" else="%WIKIWEBMASTERNAME%"}%  <%IF{"defined AUTOGENMAIL" then="%AUTOGENMAIL%" else="%WIKIWEBMASTER%"}%>%TMPL:END%
-
 %{"Set receipient here:"}%
 %TMPL:DEF{"ModacMailTo"}%Please define receipient in ModacMailTo%TMPL:END%
 
