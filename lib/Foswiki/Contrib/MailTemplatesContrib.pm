@@ -185,14 +185,15 @@ sub sendMail {
 
 sub _sendGeneratedMails {
     my ($options) = @_;
-            foreach my $text ( @{$options->{GeneratedMails}} ) {
-                my $errors = Foswiki::Func::sendEmail( $text, 5 );
-                if ($errors) {
-                    Foswiki::Func::writeWarning(
-                        'Failed to send mail'.(($options->{id})?" ($options->{id})":'').':'. $errors
-                    );
-                }
-            }
+
+    foreach my $text ( @{$options->{GeneratedMails}} ) {
+        my $errors = Foswiki::Func::sendEmail( $text, 5 );
+        if ($errors) {
+            Foswiki::Func::writeWarning(
+                'Failed to send mail'.(($options->{id})?" ($options->{id})":'').':'. $errors
+            );
+        }
+    }
 }
 
 sub _reseti18n {
