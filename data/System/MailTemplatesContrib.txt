@@ -12,6 +12,35 @@ One line description, required for extensions repository catalog.
 ---++ Installation
 %$INSTALL_INSTRUCTIONS%
 
+---+++ Installation of system services for mailtemplatesgrinder.
+
+For the integration with the TaskDaemonPlugin (also known as mattdaemon) to work, this extensions need a installed system service.
+Service files for systemd are provided in =resources/MailTemplatesContrib= in your Foswiki root directory.
+If you use this configuration, your daemon will run as a systemd instantiated service.
+
+Preliminaries:
+   * =$FOSWIKI_ROOT= Your Foswiki root directory
+   * =$INSTANCE= The name of the Foswiki instance. Even if you run only one Foswiki instance, you need to decide for one, e.g. =qwiki=.
+Installation instructions für Debian Linux.
+
+<pre>
+install -o root -g root $FOSWIKI_ROOT/resources/MailTemplatesContrib/systemd/config/mailtemplatesworker /etc/default/mailtemplatesworker-$INSTANCE
+install -o root -g root $FOSWIKI_ROOT/resources/MailTemplatesContrib/systemd/mailtemplatesworker@.service /etc/systemd/system/mailtemplatesworker@.service
+</pre>
+
+   * Edit =/etc/default/mailtemplatesworker-$INSTANCE= and change the Foswiki root directory path.
+   * Edit =/etc/systemd/system/mailtemplatesworker@.service= and change the User to your webserver user (the default works for Debian).
+
+Activate the service:
+
+<pre>
+systemctl daemon-reload
+systemctl enable  mailtemplatesworker@$INSTANCE
+systemctl restart mailtemplatesworker@$INSTANCE
+</pre>
+
+Now, change the option ={Extension}{MailTemplatesContrib}{UseGrinder}= in =/bin/configure= to =true= to use the mailtemplatesgrinder.
+
 ---++ Info
 
 |  Author: | StephanOsthold |
