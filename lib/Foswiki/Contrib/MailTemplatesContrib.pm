@@ -245,7 +245,10 @@ sub _generateMails {
     $receipients->{Cc} = usersToMails( $receipients->{WikiCc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
     $receipients->{Bcc} = usersToMails( $receipients->{WikiBcc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
 
-    return 0 unless $receipients->{To} && scalar keys %{$receipients->{To}};
+    if (! defined $receipients->{To} || ref($receipients->{To}) ne 'HASH' || ! scalar keys %{$receipients->{To}}) {
+        $options->{GeneratedMails} = [];
+        return 0;
+    }
 
     # Join to single 'To' field, if requested (otherwise send separate mail to each 'To' mail)
     if( $options->{SingleMail} ) {
