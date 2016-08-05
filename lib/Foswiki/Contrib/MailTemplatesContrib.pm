@@ -13,6 +13,8 @@ package Foswiki::Contrib::MailTemplatesContrib;
 use strict;
 use warnings;
 
+use JSON;
+
 use MIME::Base64;
 
 our $VERSION = '1.0';
@@ -134,14 +136,93 @@ These are the methods meant to be called when you want to send an email.
      | =IncludeMailUsers= | only send mails to users whose emails are in this hashref |
      | =IncludeUsers= | only send mails to users whose WikiNames are in this hashref |
      | =id= | entries in logfiles will show this id |
+     | =GenerateOnly= | only generate mails, do not actually send them |
+     | =GenerateInAdvance= | do not delay generating mails to the grinder (use this if you have stuff set in the session or need any of the results like =SkipMailUsers=) |
+   * =$setPreferences= - hash with settings to set with =setPreferencesValue= when rendering the template.
+      * Special case =LANGUAGE=: The email will be generated in this language (defaults to browser language or en).
+   * =$useDaemon= - use the daemon (if possible)
 
 =cut
 
 sub sendMail {
-    my ($template, $options) = @_;
+    my ($template, $options, $setPreferences, $useDaemon) = @_;
 
-    $options ||= {};
+    $options = {} unless $options;
+    $setPreferences = {} unless $setPreferences;
+
+    my $session = $Foswiki::Plugins::SESSION;
+    $setPreferences->{LANGUAGE} = $session->i18n->language() unless $setPreferences->{LANGUAGE}; # Rather set this in configure?
+
+    unless($useDaemon && $Foswiki::cfg{Plugins}{TaskDaemonPlugin}{Enabled} && $Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder}) {
+        _generateMails($template, $options, $setPreferences);
+
+        unless($options->{GenerateOnly}) {
+            _sendGeneratedMails($options);
+        }
+        return;
+    }
+
+    my $type;
+    if($options->{GenerateInAdvance}) {
+        _generateMails(@_);
+        return unless scalar @{$options->{GeneratedMails}};
+        $type = 'sendGeneratedMails';
+    } else {
+        $type = 'sendMail';
+    }
+
+    my $data = {
+        template => $template,
+        options => $options,
+        setPreferences => $setPreferences,
+        user => $session->{user},
+        webtopic => $options->{webtopic} ? $options->{webtopic} : $session->{webName} . "." . $session->{topicName},
+    };
+    my $json = encode_json($data);
+
+    Foswiki::Plugins::TaskDaemonPlugin::send($json, $type, 'MailTemplatesContrib', 0);
+}
+
+sub _sendGeneratedMails {
+    my ($options) = @_;
+
+    foreach my $text ( @{$options->{GeneratedMails}} ) {
+        my $errors = Foswiki::Func::sendEmail( $text, 5 );
+        if ($errors) {
+            Foswiki::Func::writeWarning(
+                'Failed to send mail'.(($options->{id})?" ($options->{id})":'').':'. $errors
+            );
+        }
+    }
+}
+
+sub _reseti18n {
+    my ( $language ) = @_;
+
+    my $session = $Foswiki::Plugins::SESSION;
+    my $currentLanguage = $session->i18n->language();
+    unless ($currentLanguage && $currentLanguage eq $language) {
+        Foswiki::Func::setPreferencesValue( 'LANGUAGE', $language );
+        $Foswiki::Plugins::SESSION->reset_i18n();
+    }
+}
+
+sub _generateMails {
+    my ($template, $options, $setPreferences) = @_;
+
+    my $oldPreferences = {};
+
     my $includeCurrent = $options->{IncludeCurrentUser};
+
+    if($setPreferences) {
+        foreach my $pref ( keys %$setPreferences ) {
+            $oldPreferences->{$pref} = Foswiki::Func::getPreferencesValue($pref);
+            Foswiki::Func::setPreferencesValue($pref, $setPreferences->{$pref});
+        }
+
+        my $language = $setPreferences->{LANGUAGE} || 'en';
+        _reseti18n($language);
+    }
 
     Foswiki::Func::loadTemplate($template) if $template;
 
@@ -164,7 +245,10 @@ sub sendMail {
     $receipients->{Cc} = usersToMails( $receipients->{WikiCc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
     $receipients->{Bcc} = usersToMails( $receipients->{WikiBcc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
 
-    return 0 unless $receipients->{To} && scalar keys %{$receipients->{To}};
+    if (! defined $receipients->{To} || ref($receipients->{To}) ne 'HASH' || ! scalar keys %{$receipients->{To}}) {
+        $options->{GeneratedMails} = [];
+        return 0;
+    }
 
     # Join to single 'To' field, if requested (otherwise send separate mail to each 'To' mail)
     if( $options->{SingleMail} ) {
@@ -179,8 +263,10 @@ sub sendMail {
         $receipients->{To} = { $mail => $wiki };
     }
 
-    # send mails
+
+    # generate actual mails
     my $count = 1;
+    $options->{GeneratedMails} = [] unless exists $options->{GeneratedMails};
     foreach my $to ( keys %{$receipients->{To}} ) {
         Foswiki::Func::setPreferencesValue( 'to_expanded', 'To: '.$to );
         Foswiki::Func::setPreferencesValue( 'to_WikiName', $receipients->{To}->{$to} );
@@ -206,18 +292,13 @@ sub sendMail {
             $header =~ s#^(\s*Subject\s*:\s*)(.*)#_encodeSubject($1,$2)#gmei;
             $text = $header.$body;
         }
-        if($options->{GenerateOnly}) {
-            $options->{GeneratedMails} = [] unless exists $options->{GeneratedMails};
-            push(@{$options->{GeneratedMails}}, $text);
-        } else {
-            my $errors = Foswiki::Func::sendEmail( $text, 5 );
-            if ($errors) {
-                Foswiki::Func::writeWarning(
-                    'Failed to send action mails'.(($options->{id})?" ($options->{id})":'').':'. $errors
-                );
-            }
-        }
+        push(@{$options->{GeneratedMails}}, $text);
     }
+
+    foreach my $pref ( keys %$oldPreferences ) {
+        Foswiki::Func::setPreferencesValue($pref, $oldPreferences->{$pref});
+    }
+    _reseti18n($oldPreferences->{LANGUAGE}) if $oldPreferences->{LANGUAGE};
 }
 
 =begin TML
