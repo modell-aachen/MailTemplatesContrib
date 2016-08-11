@@ -35,6 +35,7 @@ our $SHORTDESCRIPTION = 'Helper for plugins for sending mails.';
 
 Convert a string of comma-separated users and groups to an array of users.
    * =$list= - comma-separated list of users and groups
+   * =$dummyUsers= - hashref for dummy users, when a mail is not associated with an account; if undef those mails will be discarded
 
 Return: =\@usersArray= array of all users in that list
 
@@ -44,7 +45,7 @@ only once, regardless in how often he may appear in the list.
 =cut
 
 sub listToUsers {
-    my ($list) = @_;
+    my ($list, $dummyUsers) = @_;
 
     return unless $list;
 
@@ -63,8 +64,28 @@ sub listToUsers {
             }
         }
         else {
-            $entry = Foswiki::Func::getWikiName($entry);
-            $users->{$entry} = 1;
+            if ($entry =~ m#$Foswiki::regex{emailAddrRegex}#) {
+                my @mailOwners = Foswiki::Func::emailToWikiNames($entry);
+                if(scalar @mailOwners) {
+                    foreach my $owner ( @mailOwners ) {
+                        $users->{$owner} = 1;
+                    }
+                } elsif ($dummyUsers) {
+                    # we are not terribly efficient here, lets hope we do not
+                    # want to spam half a continent
+                    (my $dummy) = grep { $entry eq $dummyUsers->{$_} } values %$dummyUsers;
+                    unless ($dummy) {
+                        $dummy = 'UnknownUser' . scalar keys %$dummyUsers unless $dummy;
+                        $dummyUsers->{$dummy} = $entry;
+                    }
+                    $users->{$dummy} = 1;
+                }
+            } else {
+                my $user = Foswiki::Func::getWikiName($entry);
+                if($user) {
+                    $users->{$user} = 1;
+                }
+            }
         }
     }
     my @usersArray = keys %$users;
@@ -90,20 +111,25 @@ Return: =\%emails= addresses with their owners
 =cut
 
 sub usersToMails {
-    my ($users, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers) = @_;
+    my ($users, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers, $dummyUsers) = @_;
 
     return unless $users;
 
     my $emails = ();
     my $currentUser = Foswiki::Func::getWikiName();
     foreach my $who (@$users) {
+        my @list;
         $who =~ s/^.*\.//; # web name?
-        $who = Foswiki::Func::getWikiName( $who ); # normalize for comparison
-        next if $who eq $currentUser && not $includeCurrent;
-        next if defined $skipUsers->{$who};
-        next if defined $includeUsers && not defined $includeUsers->{$who};
-        my @list = Foswiki::Func::wikinameToEmails($who);
-        $skipUsers->{Foswiki::Func::getCanonicalUserID($who)} = 1 if scalar @list;
+        if ($dummyUsers && $dummyUsers->{$who}) {
+            @list = ($dummyUsers->{$who});
+        } else {
+            $who = Foswiki::Func::getWikiName( $who ); # normalize for comparison
+            next if $who eq $currentUser && not $includeCurrent;
+            next if defined $skipUsers->{$who};
+            next if defined $includeUsers && not defined $includeUsers->{$who};
+            @list = Foswiki::Func::wikinameToEmails($who);
+            $skipUsers->{Foswiki::Func::getCanonicalUserID($who)} = 1 if scalar @list;
+        }
         foreach my $mail ( @list ) {
             next if $skipMails->{$mail};
             next if $includeMails && not $includeMails->{$mail};
@@ -132,12 +158,13 @@ These are the methods meant to be called when you want to send an email.
      | =beforeSend= | ref to callback function that will be called just before the email will be send out |
      | =beforeSendArgs= | arrayref of arguments to the callback%BR%The text of the mail will be unshiftet to this array |
      | =SkipUsers= | do not send mails to users whose WikiName is in this hashref; any user receiving a mail will be added automatically |
-     | =SkipMailUsers= | do not send mails to adresses in this hashref; any adress receiving a mail will be added automatically |
+     | =SkipMailUsers= | do not send mails to addresses in this hashref; any address receiving a mail will be added automatically |
      | =IncludeMailUsers= | only send mails to users whose emails are in this hashref |
      | =IncludeUsers= | only send mails to users whose WikiNames are in this hashref |
      | =id= | entries in logfiles will show this id |
      | =GenerateOnly= | only generate mails, do not actually send them |
      | =GenerateInAdvance= | do not delay generating mails to the grinder (use this if you have stuff set in the session or need any of the results like =SkipMailUsers=) |
+     | =AllowMailsWithoutUser= | allow mail addresses that have no user associated with them (eg. roles like sales@...). |
    * =$setPreferences= - hash with settings to set with =setPreferencesValue= when rendering the template.
       * Special case =LANGUAGE=: The email will be generated in this language (defaults to browser language or en).
    * =$useDaemon= - use the daemon (if possible)
@@ -231,19 +258,20 @@ sub _generateMails {
     my $skipUsers = $options->{SkipUsers} || {};
     my $includeUsers = $options->{IncludeUsers};
     my $includeMails = $options->{IncludeMailUsers};
+    my $dummyUsers = {} if $options->{AllowMailsWithoutUser};
 
     # Do the general primer
     Foswiki::Func::expandCommonVariables(Foswiki::Func::expandTemplate( 'ModacMailPrimer' ));
 
     # get people
-    $receipients->{WikiTo} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailTo' ) );
-    $receipients->{WikiCc} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailCc' ) );
-    $receipients->{WikiBcc} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailBcc' ) );
+    $receipients->{WikiTo} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailTo' ), $dummyUsers );
+    $receipients->{WikiCc} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailCc' ), $dummyUsers );
+    $receipients->{WikiBcc} = listToUsers( Foswiki::Func::expandTemplate( 'ModacMailBcc' ), $dummyUsers );
 
     # get mails
-    $receipients->{To} = usersToMails( $receipients->{WikiTo}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
-    $receipients->{Cc} = usersToMails( $receipients->{WikiCc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
-    $receipients->{Bcc} = usersToMails( $receipients->{WikiBcc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers );
+    $receipients->{To} = usersToMails( $receipients->{WikiTo}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers, $dummyUsers );
+    $receipients->{Cc} = usersToMails( $receipients->{WikiCc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers, $dummyUsers );
+    $receipients->{Bcc} = usersToMails( $receipients->{WikiBcc}, $includeCurrent, $skipMails, $skipUsers, $includeMails, $includeUsers, $dummyUsers );
 
     if (! defined $receipients->{To} || ref($receipients->{To}) ne 'HASH' || ! scalar keys %{$receipients->{To}}) {
         $options->{GeneratedMails} = [];
