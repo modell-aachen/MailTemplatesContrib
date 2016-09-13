@@ -9,6 +9,74 @@ One line description, required for extensions repository catalog.
 
 %TOC%
 
+---++ Usage
+---+++ Send Mail from CLI
+The tool from $WIKIDIR/tools/mailtemplate_send can be used to send mails from command line.
+To execute the script you can call it with a given template and a given web.
+E.g.:
+<pre>
+perl mailtemplate_send template=mailtemplatescontrib web=Processes
+</pre>
+
+The recipients and from address should be set in the template, in the ModacMail block.
+<pre>
+%<nop>TMPL:DEF{"ModacMailTo"}%UserName%<nop>TMPL:END%
+%<nop>TMPL:DEF{"ModacMailFrom"}%qwiki@modell-aachen.de%<nop>TMPL:END%
+</pre>
+
+When you like to generate you recipents by Solr you can use a =ModacMailPrimer= block to get some Solr search result with a facet of users and define you users format in the =ModacMailTo= field.
+
+There are some more parameters to call the mailtemplate_send function with:
+
+   * =topic=: you can specify a topic as context.
+   * =options_SingleMail=: if true: join all receipients to a single =To= %BR% otherwise: send a separate mail to each receipient
+   * =options_beforeSend=: ref to callback function that will be called just before the email will be send out
+   * =options_beforeSendArgs=: arrayref of arguments to the callback%BR%The text of the mail will be unshiftet to this array
+   * =options_SkipUsers=: do not send mails to users whose WikiName is in this hashref; any user receiving a mail will be added automatically
+   * =options_SkipMailUsers=: do not send mails to addresses in this hashref; any address receiving a mail will be added automatically
+   * =options_IncludeMailUsers=: only send mails to users whose emails are in this hashref
+   * =options_IncludeUsers=: only send mails to users whose WikiNames are in this hashref
+   * =options_id=: entries in logfiles will show this id
+   * =options_GenerateOnly=: only generate mails, do not actually send them
+   * =options_GenerateInAdvance=: do not delay generating mails to the grinder (use this if you have stuff set in the session or need any of the results like =SkipMailUsers=)
+   * =options_AllowMailsWithoutUser=: allow mail addresses that have no user associated with them (eg. roles like sales@...).
+
+Example call for a cron job:
+<pre>
+0    7 * * 1-6 cd /var/www/qwiki/tools; perl mailtemplate_send template=ApprovedTopicByResponsibleMail web=Processes options_SkipUsers=WikiGuest,ProjectContributor
+</pre>
+
+and a example template which should inform the responsible of a topic that it is approved since today. This should only show how to use =ModacMailPrimer= and =ModacMailEachPrimer=, so you need to modify it your your needs:
+<pre>
+<verbatim>
+%TMPL:INCLUDE{"mailtemplatescontrib"}%
+
+%TMPL:DEF{"ModacMailPrimer"}%
+%SOLRSEARCH{"web:%URLPARAM{"web"}% type:topic workflowmeta_lasttime_approved_dt:[NOW/DAY-1DAY TO NOW]"
+rows="1" id="who" facets="field_Responsible_s" facetlimit="9999"}%
+%TMPL:END%
+
+%TMPL:DEF{"ModacMailEachPrimer"}%%SOLRSEARCH{"type:topic ((field_Responsible_s: %to_WikiName% workflow_lasttime_approved_dt:[NOW/DAY-1DAY TO NOW]))" id="eachkvp%ModacMailCount%" rows="1" fields="topic"}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailTo"}%%SOLRFORMAT{"who" format_field_Responsible_s="$key" separator_field_Responsible_s=","}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailSubject"}%%MAKETEXT{"[_1]: Your approved topics" args="%WIKITOOLNAME%"}%%TMPL:END%
+
+%TMPL:DEF{"ModacMailContents"}%
+%MAKETEXT{"Dear [_1]," args="%to_WikiName%"}%
+%BR%%BR%
+Your last approved Topics:
+%SOLRFORMAT{"eachkvp%ModacMailCount%" format="[[$webtopic][$title]] - $workflowmeta_lasttime_approved_dt$n"}%
+%BR%
+%MAKETEXT{"Best Regards,<br/>Your [_1] Team" args="%WIKITOOLNAME%"}%
+%TMPL:END%
+
+%TMPL:DEF{"ModacMailFrom"}%%WIKIWEBMASTERNAME% <%WIKIWEBMASTER%>%TMPL:END%
+
+%TMPL:DEF{"ModacMailType"}%text/html%TMPL:END%
+</verbatim>
+</pre>
+
 ---++ Installation
 %$INSTALL_INSTRUCTIONS%
 
