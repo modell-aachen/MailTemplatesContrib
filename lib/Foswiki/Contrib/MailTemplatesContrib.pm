@@ -115,20 +115,33 @@ sub usersToMails {
 
     return unless $users;
 
+    # normalize, we do allow WikiNames here
+    # We can not use map, because we need to return the hashes
+    foreach my $users ( ($skipUsers, $includeUsers ) ) {
+        next unless $users; # includeUsers is usually undef
+        foreach my $user ( keys %$users ) {
+            my $cUser = Foswiki::Func::getCanonicalUserID($user);
+            if($cUser ne $user) {
+                delete $users->{$user};
+                $users->{$cUser} = 1;
+            }
+        }
+    }
+
     my $emails = ();
-    my $currentUser = Foswiki::Func::getWikiName();
+    my $currentUser = Foswiki::Func::getCanonicalUserID();
     foreach my $who (@$users) {
         my @list;
-        $who =~ s/^.*\.//; # web name?
         if ($dummyUsers && $dummyUsers->{$who}) {
             @list = ($dummyUsers->{$who});
         } else {
-            $who = Foswiki::Func::getWikiName( $who ); # normalize for comparison
+            $who = Foswiki::Func::getCanonicalUserID( $who ); # normalize for comparison
+            next unless $who;
             next if $who eq $currentUser && not $includeCurrent;
             next if defined $skipUsers->{$who};
             next if defined $includeUsers && not defined $includeUsers->{$who};
-            @list = Foswiki::Func::wikinameToEmails($who);
-            $skipUsers->{Foswiki::Func::getCanonicalUserID($who)} = 1 if scalar @list;
+            @list = Foswiki::Func::wikinameToEmails(Foswiki::Func::getWikiName($who));
+            $skipUsers->{$who} = 1 if scalar @list;
         }
         foreach my $mail ( @list ) {
             next if $skipMails->{$mail};
