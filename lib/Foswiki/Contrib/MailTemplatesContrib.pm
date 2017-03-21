@@ -440,7 +440,7 @@ sub _encodeSubject {
         return "\x01" x (length($quoted) - 1) . "\x02"
     };
     # Encode disallowed chars. Note: Also spaces must be encoded.
-    $encoded =~ s#([^\x09\x21-\x3c\x3e-\x7e])#&$escapeChar#ge;
+    $encoded =~ s#([^\x09\x21-\x3c\x3e\x40-\x7e])#&$escapeChar#ge;
 
     # Put the complete subject line together
     $encoded = $header.$pre.$encoded.$tail;
