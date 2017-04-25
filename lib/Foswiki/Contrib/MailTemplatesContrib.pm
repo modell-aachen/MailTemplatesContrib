@@ -242,7 +242,10 @@ sub _reseti18n {
     my $session = $Foswiki::Plugins::SESSION;
     my $currentLanguage = $session->i18n->language();
     unless ($currentLanguage && $currentLanguage eq $language) {
-        Foswiki::Func::setPreferencesValue( 'LANGUAGE', $language );
+        # Unfortunately we have to set internal preferences here (Foswiki::Func::setPreferencesValue is not sufficient)
+        # The LANGUAGE internal preferences may be set when the language selector is used.
+        # So we have to overwrite it for our mails.
+        $Foswiki::Plugins::SESSION->{prefs}->setInternalPreferences(LANGUAGE => $language);
         $Foswiki::Plugins::SESSION->reset_i18n();
     }
 }
