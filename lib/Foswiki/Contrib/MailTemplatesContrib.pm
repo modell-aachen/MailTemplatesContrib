@@ -191,6 +191,10 @@ sub sendMail {
     $setPreferences = {} unless $setPreferences;
 
     my $session = $Foswiki::Plugins::SESSION;
+
+    my $spobject = Foswiki::Prefs->new($session);
+    $spobject->loadSitePreferences();
+    $setPreferences->{LANGUAGE} = $spobject->getPreference("MAIL_LANGUAGE") unless $setPreferences->{LANGUAGE}; # Rather set this in configure?
     $setPreferences->{LANGUAGE} = $session->i18n->language() unless $setPreferences->{LANGUAGE}; # Rather set this in configure?
 
     unless($useDaemon && $Foswiki::cfg{Plugins}{TaskDaemonPlugin}{Enabled} && $Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder}) {
