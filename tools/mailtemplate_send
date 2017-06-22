@@ -17,8 +17,6 @@
 use strict;
 use warnings;
 
-use Foswiki ();
-use Foswiki::UI ();
 use Getopt::Long;
 
 my %params = ();
@@ -34,6 +32,9 @@ BEGIN {
   $ENV{FOSWIKI_ACTION} = 'mailtemplatesend';
   require 'setlib.cfg';
 }
+
+use Foswiki ();
+use Foswiki::UI ();
 
 my $hostname = $params{host} || $ENV{host};
 if ($hostname) {
