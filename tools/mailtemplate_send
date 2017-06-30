@@ -17,6 +17,11 @@
 use strict;
 use warnings;
 
+use Getopt::Long;
+
+my %params = ();
+GetOptions (\%params, 'host=s');
+
 # Set library paths in @INC, at compile time
 BEGIN {
   if (-e './setlib.cfg') {
@@ -30,6 +35,26 @@ BEGIN {
 
 use Foswiki ();
 use Foswiki::UI ();
-$Foswiki::engine->run();
+
+my $hostname = $params{host} || $ENV{host};
+if ($hostname) {
+    require Foswiki::Contrib::VirtualHostingContrib;
+    require Foswiki::Contrib::VirtualHostingContrib::VirtualHost;
+}
+
+
+if ($hostname) {
+    if($hostname eq 'all') {
+        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on($hostname, \&doit);
+    } else {
+        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on_each(\&doit);
+    }
+} else {
+    doit();
+}
+
+sub doit {
+    $Foswiki::engine->run();
+}
 
 1;
