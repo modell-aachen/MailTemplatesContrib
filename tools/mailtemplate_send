@@ -38,16 +38,15 @@ use Foswiki::UI ();
 
 my $hostname = $params{host} || $ENV{host};
 if ($hostname) {
-    require Foswiki::Contrib::VirtualHostingContrib;
     require Foswiki::Contrib::VirtualHostingContrib::VirtualHost;
 }
 
 
 if ($hostname) {
     if($hostname eq 'all') {
-        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on($hostname, \&doit);
-    } else {
         Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on_each(\&doit);
+    } else {
+        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on($hostname, \&doit);
     }
 } else {
     doit();
