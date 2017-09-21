@@ -4,6 +4,8 @@ lib/Foswiki/Contrib/MailTemplatesContrib.pm  Perl module
 lib/Foswiki/Contrib/MailTemplatesContrib/Config.spec 0444 Configuration
 lib/Foswiki/Contrib/MailTemplatesContrib/Grinder.pm 0444
 templates/mailtemplatescontrib.tmpl 0644 base template for mail
+test/unit/MailTemplatesContrib/MailTemplatesContribTests.pm 0644
+test/unit/MailTemplatesContrib/MailTemplatesContribSuite.pm 0644
 tools/mailtemplate_send 0644
 resources/MailTemplatesContrib/systemd/config/mailtemplatesworker 0644
 resources/MailTemplatesContrib/systemd/mailtemplatesworker@.service 0644

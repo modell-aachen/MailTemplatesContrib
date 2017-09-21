@@ -192,10 +192,19 @@ sub sendMail {
 
     my $session = $Foswiki::Plugins::SESSION;
 
-    my $spobject = Foswiki::Prefs->new($session);
-    $spobject->loadSitePreferences();
-    $setPreferences->{LANGUAGE} = $spobject->getPreference("MAIL_LANGUAGE") unless $setPreferences->{LANGUAGE}; # Rather set this in configure?
-    $setPreferences->{LANGUAGE} = $session->i18n->language() unless $setPreferences->{LANGUAGE}; # Rather set this in configure?
+    unless($setPreferences->{LANGUAGE}) {
+        if($Foswiki::Plugins::SESSION->inContext('command_line')) {
+            my $query = Foswiki::Func::getRequestObject();
+            my $language = $query->param('LANGUAGE')
+                || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('BACKEND_MAIL_LANGUAGE')
+                || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE')
+                || Foswiki::Func::getPreferencesValue('LANGUAGE');
+            $setPreferences->{LANGUAGE} = $language if $language;
+        } else {
+            $setPreferences->{LANGUAGE} = Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE');
+            $setPreferences->{LANGUAGE} = $session->i18n->language() unless $setPreferences->{LANGUAGE};
+        }
+    }
 
     unless($useDaemon && $Foswiki::cfg{Plugins}{TaskDaemonPlugin}{Enabled} && $Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder}) {
         _generateMails($template, $options, $setPreferences);
@@ -368,7 +377,7 @@ These methods are called from cli when you want to send an email.
 =cut
 
 sub _sendCli {
-    my $query = Foswiki::Func::getCgiQuery();
+    my $query = Foswiki::Func::getRequestObject();
     my $template = $query->param('template');
 
     unless ($template) {
@@ -380,7 +389,7 @@ sub _sendCli {
 
     # provide cli parameters as preferences/options
     foreach my $param ($query->param) {
-        Foswiki::Func::setPreferencesValue($param, $query->param($param));
+        Foswiki::Func::setPreferencesValue($param, scalar $query->param($param));
 
         # put anything with options prefix into the options hash
         if( $param =~ m/options_(.*Users)$/) {

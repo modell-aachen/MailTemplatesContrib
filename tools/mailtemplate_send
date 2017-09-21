@@ -24,6 +24,7 @@ GetOptions (\%params, 'host=s');
 
 # Set library paths in @INC, at compile time
 BEGIN {
+  $Foswiki::cfg{Engine} = 'Foswiki::Engine::CLI';
   if (-e './setlib.cfg') {
     unshift @INC, '.';
   } elsif (-e '../bin/setlib.cfg') {
