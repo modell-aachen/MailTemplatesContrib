@@ -74,10 +74,10 @@ sub _mock {
     # purport our browserlanguage to be en
     $mocks->{'Foswiki::I18N'}->mock('language', 'en');
 
-    my ($calledRef, $languageRef) = ($settings->{called} || my $dummyCalled, $settings->{language} || my $dummyLang);
+    my ($mailsWereGeneratedRef, $languageRef) = ($settings->{mailsWereGenerated} || my $dummyCalled, $settings->{language} || my $dummyLang);
     $mocks->{'Foswiki::Contrib::MailTemplatesContrib'}->mock('_generateMails', sub {
         my ($template, $options, $setPreferences) = @_;
-        $$calledRef = 1;
+        $$mailsWereGeneratedRef = 1;
         $$languageRef = $setPreferences->{LANGUAGE};
     });
 }
@@ -87,15 +87,15 @@ sub _mock {
 sub test_languageDefaultsToEnTests {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
     });
 
     Foswiki::Contrib::MailTemplatesContrib::_sendCli();
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert(!defined $language, "LANGUAGE exists: " . ($language || 'undef'));
 }
 
@@ -104,9 +104,9 @@ sub test_languageDefaultsToEnTests {
 sub test_useLANGUAGEfromSitePreferences {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         Preferences => {
             LANGUAGE => 'tlh',
@@ -115,7 +115,7 @@ sub test_useLANGUAGEfromSitePreferences {
 
     Foswiki::Contrib::MailTemplatesContrib::_sendCli();
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'tlh', "LANGUAGE preference was not used: " .($language || 'undef'));
 }
 
@@ -125,9 +125,9 @@ sub test_useLANGUAGEfromSitePreferences {
 sub test_useMAIL_LANGUAGEfromSitePreferences {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         SitePreferences => {
             LANGUAGE => 'tlh',
@@ -137,7 +137,7 @@ sub test_useMAIL_LANGUAGEfromSitePreferences {
 
     Foswiki::Contrib::MailTemplatesContrib::_sendCli();
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'fr', "MAIL_LANGUAGE preference was not used: " .($language || 'undef'));
 }
 
@@ -148,9 +148,9 @@ sub test_useMAIL_LANGUAGEfromSitePreferences {
 sub test_useBACKEND_MAIL_LANGUAGEfromSitePreferences {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         SitePreferences => {
             LANGUAGE => 'tlh',
@@ -161,7 +161,7 @@ sub test_useBACKEND_MAIL_LANGUAGEfromSitePreferences {
 
     Foswiki::Contrib::MailTemplatesContrib::_sendCli();
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'it', "MAIL_LANGUAGE preference was not used: " .($language || 'undef'));
 }
 
@@ -173,9 +173,9 @@ sub test_useBACKEND_MAIL_LANGUAGEfromSitePreferences {
 sub test_useLANGUAGEfromCli {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         parameters => {
             template => 'Dummy',
@@ -190,7 +190,7 @@ sub test_useLANGUAGEfromCli {
 
     Foswiki::Contrib::MailTemplatesContrib::_sendCli();
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'zh-cn', "LANGUAGE parameter was not used: " .($language || 'undef'));
 }
 
@@ -200,9 +200,9 @@ sub test_useLANGUAGEfromCli {
 sub test_useMAIL_LANGUAGEfromBrowser {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         noCli => 1,
         SitePreferences => {
@@ -213,7 +213,7 @@ sub test_useMAIL_LANGUAGEfromBrowser {
 
     Foswiki::Contrib::MailTemplatesContrib::sendMail('Dummy', {}, {});
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'fr', "MAIL_LANGUAGE did not apply: " .($language || 'undef'));
 }
 
@@ -223,9 +223,9 @@ sub test_useMAIL_LANGUAGEfromBrowser {
 sub test_useLanguagefromBrowser {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         noCli => 1,
         SitePreferences => {
@@ -235,7 +235,7 @@ sub test_useLanguagefromBrowser {
 
     Foswiki::Contrib::MailTemplatesContrib::sendMail('Dummy', {}, {});
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'en', "Browser language did not apply: " .($language || 'undef'));
 }
 
@@ -246,9 +246,9 @@ sub test_useLanguagefromBrowser {
 sub test_useLANGUAGEfromBrowser {
     my ( $this ) = @_;
 
-    my ($called, $language);
+    my ($mailsWereGenerated, $language);
     _mock({
-        called => \$called,
+        mailsWereGenerated => \$mailsWereGenerated,
         language => \$language,
         noCli => 1,
         SitePreferences => {
@@ -259,7 +259,7 @@ sub test_useLANGUAGEfromBrowser {
 
     Foswiki::Contrib::MailTemplatesContrib::sendMail('Dummy', {}, { LANGUAGE => 'tlh' });
 
-    $this->assert($called, 'Mails where not gererated');
+    $this->assert($mailsWereGenerated, 'Mails were not generated');
     $this->assert($language eq 'tlh', "LANGUAGE did not apply: " .($language || 'undef'));
 }
 
