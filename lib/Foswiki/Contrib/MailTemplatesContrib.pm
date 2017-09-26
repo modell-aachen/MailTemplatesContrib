@@ -192,19 +192,7 @@ sub sendMail {
 
     my $session = $Foswiki::Plugins::SESSION;
 
-    unless($setPreferences->{LANGUAGE}) {
-        if($Foswiki::Plugins::SESSION->inContext('command_line')) {
-            my $query = Foswiki::Func::getRequestObject();
-            my $language = $query->param('LANGUAGE')
-                || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('BACKEND_MAIL_LANGUAGE')
-                || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE')
-                || Foswiki::Func::getPreferencesValue('LANGUAGE');
-            $setPreferences->{LANGUAGE} = $language if $language;
-        } else {
-            $setPreferences->{LANGUAGE} = Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE');
-            $setPreferences->{LANGUAGE} = $session->i18n->language() unless $setPreferences->{LANGUAGE};
-        }
-    }
+    $setPreferences->{LANGUAGE} = _determineMailLanguage($session, $setPreferences);
 
     unless($useDaemon && $Foswiki::cfg{Plugins}{TaskDaemonPlugin}{Enabled} && $Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder}) {
         _generateMails($template, $options, $setPreferences);
@@ -234,6 +222,22 @@ sub sendMail {
     my $json = encode_json($data);
 
     Foswiki::Plugins::TaskDaemonPlugin::send($json, $type, 'MailTemplatesContrib', 0);
+}
+
+sub _determineMailLanguage {
+    my ($session, $setPreferences) = @_;
+
+    return $setPreferences->{LANGUAGE} if $setPreferences->{LANGUAGE};
+
+    if($Foswiki::Plugins::SESSION->inContext('command_line')) {
+        my $query = Foswiki::Func::getRequestObject();
+        return $query->param('LANGUAGE')
+            || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('BACKEND_MAIL_LANGUAGE')
+            || Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE')
+            || Foswiki::Func::getPreferencesValue('LANGUAGE');
+    } else {
+        return Foswiki::Plugins::DefaultPreferencesPlugin::getSitePreferencesValue('MAIL_LANGUAGE') || $session->i18n->language();
+    }
 }
 
 sub _sendGeneratedMails {
