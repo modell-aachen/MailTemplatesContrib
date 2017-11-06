@@ -24,6 +24,7 @@ GetOptions (\%params, 'host=s');
 
 # Set library paths in @INC, at compile time
 BEGIN {
+  $Foswiki::cfg{Engine} = 'Foswiki::Engine::CLI';
   if (-e './setlib.cfg') {
     unshift @INC, '.';
   } elsif (-e '../bin/setlib.cfg') {
@@ -38,16 +39,15 @@ use Foswiki::UI ();
 
 my $hostname = $params{host} || $ENV{host};
 if ($hostname) {
-    require Foswiki::Contrib::VirtualHostingContrib;
     require Foswiki::Contrib::VirtualHostingContrib::VirtualHost;
 }
 
 
 if ($hostname) {
     if($hostname eq 'all') {
-        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on($hostname, \&doit);
-    } else {
         Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on_each(\&doit);
+    } else {
+        Foswiki::Contrib::VirtualHostingContrib::VirtualHost->run_on($hostname, \&doit);
     }
 } else {
     doit();
