@@ -17,6 +17,8 @@ use JSON;
 
 use MIME::Base64;
 
+use Error ':try';
+
 our $VERSION = '1.0';
 
 our $RELEASE = '1.0';
@@ -195,7 +197,17 @@ sub sendMail {
     $setPreferences->{LANGUAGE} = _determineMailLanguage($session, $setPreferences);
 
     unless($useDaemon && $Foswiki::cfg{Plugins}{TaskDaemonPlugin}{Enabled} && $Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder}) {
-        _generateMails($template, $options, $setPreferences);
+        if($options->{webtopic}) {
+            my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $options->{webtopic});
+            Foswiki::Func::pushTopicContext($web, $topic);
+        }
+        try {
+            _generateMails($template, $options, $setPreferences);
+        } finally {
+            if($options->{webtopic}) {
+                Foswiki::Func::popTopicContext();
+            }
+        };
 
         unless($options->{GenerateOnly}) {
             _sendGeneratedMails($options);
