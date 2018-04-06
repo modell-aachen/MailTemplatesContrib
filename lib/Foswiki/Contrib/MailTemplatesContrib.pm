@@ -231,7 +231,7 @@ sub sendMail {
         user => $session->{user},
         webtopic => $options->{webtopic} ? $options->{webtopic} : $session->{webName} . "." . $session->{topicName},
     };
-    my $json = encode_json($data);
+    my $json = to_json($data);
 
     Foswiki::Plugins::TaskDaemonPlugin::send($json, $type, 'MailTemplatesContrib', 0);
 }

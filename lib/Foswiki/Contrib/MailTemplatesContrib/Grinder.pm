@@ -2,6 +2,7 @@ use strict;
 use warnings;
 
 use JSON;
+use Encode qw(encode);
 
 use Foswiki::Contrib::MailTemplatesContrib;
 
@@ -10,19 +11,22 @@ use Foswiki::Contrib::MailTemplatesContrib;
         my ($host, $type, $hdl, $run_engine, $json) = @_;
 
         eval {
-            my $data = decode_json($json->{data});
-            push (@ARGV, "/".$data->{webtopic}); # XXX
+            my $data = from_json($json->{data});
+            push (@ARGV, encode('UTF-8', "/" . $data->{webtopic})); # XXX
             $Foswiki::engine->{user} = $data->{user};
             $run_engine->();
             pop @ARGV;
         };
+        if($@) {
+            print STDERR $@;
+        }
 
         return {};
     },
     engine_part => sub {
         my ($session, $type, $data, $caches) = @_;
 
-        $data = decode_json($data);
+        $data = from_json($data);
 
         if($type eq 'sendMail') {
             Foswiki::Contrib::MailTemplatesContrib::_generateMails($data->{template}, $data->{options}, $data->{setPreferences});
