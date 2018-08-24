@@ -13,6 +13,8 @@ package Foswiki::Contrib::MailTemplatesContrib;
 use strict;
 use warnings;
 
+use Foswiki::Plugins::DefaultPreferencesPlugin;
+
 use JSON;
 
 use MIME::Base64;
