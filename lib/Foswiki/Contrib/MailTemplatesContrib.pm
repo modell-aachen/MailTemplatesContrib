@@ -456,6 +456,7 @@ sub _encodeSubject {
     # Header and footer for encoded words
     my $pre = '=?utf-8?Q?';
     my $tail = '?=';
+    my $tailEncoded = "\x01\x02";
 
     # Encode characters.
     # Encoded stuff is placed in @escapes and a placeholder inserted;
@@ -477,7 +478,8 @@ sub _encodeSubject {
     $encoded =~ s#([^\x09\x21-\x3c\x3e\x40-\x7e])#&$escapeChar#ge;
 
     # Put the complete subject line together
-    $encoded = $header.$pre.$encoded.$tail;
+    push @escapes, $tail;
+    $encoded = $header.$pre.$encoded.$tailEncoded;
 
     # A line containing an encoded word must not exceed 76 chars.
     if ( length($encoded) > 76 ) {
