@@ -6,5 +6,5 @@ $Foswiki::cfg{SwitchBoard}{mailtemplatesend} = ['Foswiki::Contrib::MailTemplates
 
 # **BOOLEAN**
 # Use Grinder to send mails (have it configured!)
-$Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder} = 0;
+$Foswiki::cfg{Extension}{MailTemplatesContrib}{UseGrinder} = 1;
 
