@@ -14,6 +14,7 @@ use strict;
 use warnings;
 
 use Foswiki::Plugins::DefaultPreferencesPlugin;
+use HTML::Entities;
 
 use JSON;
 
@@ -365,7 +366,7 @@ sub _generateMails {
         my ($header, $body) = split(m#^$#m, $text, 2);
         if($header && $body) {
             $header =~ s#^(\s*Subject\s*:\s*)(.*)#_encodeSubject($1,$2)#gmei;
-            $text = $header.$body;
+            $text = HTML::Entities::decode_entities($header.$body);
         }
         push(@{$options->{GeneratedMails}}, $text);
     }
